@@ -1,0 +1,45 @@
+services:
+  openwa:
+    image: ${OPENWA_API_IMAGE:-smilebasti/openwa-api:latest}
+    container_name: openwa
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:${API_PORT:-2785}:2785'
+    environment:
+      - NODE_ENV=production
+      - PORT=2785
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - DATABASE_TYPE=sqlite
+      - DATABASE_NAME=/app/data/openwa.sqlite
+      - SESSION_DATA_PATH=/app/data/sessions
+      - STORAGE_TYPE=local
+      - STORAGE_LOCAL_PATH=/app/data/media
+      - PUPPETEER_HEADLESS=true
+      - PUPPETEER_ARGS=--no-sandbox,--disable-setuid-sandbox,--disable-dev-shm-usage,--disable-gpu
+      - API_MASTER_KEY=${API_MASTER_KEY:-}
+    volumes:
+      - openwa-data:/app/data
+    healthcheck:
+      test:
+        ['CMD', 'node', '-e', "require('http').get('http://localhost:2785/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  dashboard:
+    image: ${OPENWA_DASH_IMAGE:-smilebasti/openwa-dashboard:latest}
+    container_name: openwa-dashboard
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:${DASHBOARD_PORT:-2886}:80'
+    depends_on:
+      - openwa
+
+volumes:
+  openwa-data:
+    driver: local
+
+networks:
+  default:
+    name: openwa-network
